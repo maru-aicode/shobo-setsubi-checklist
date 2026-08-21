@@ -467,23 +467,29 @@
   }
 
   function renderHome(){
-    var q = state.search.trim();
-    var filtered = state.checklists.filter(function(w){ return matches(w, q); });
-    var recent = state.checklists.filter(function(w){ return w.lastUsedAt; })
-      .sort(function(a,b){ return b.lastUsedAt - a.lastUsedAt; }).slice(0,4);
-
     var html = '';
     html += '<div class="topbar">';
     html += '  <div class="brand"><div class="brand-mark">'+ICONS.check+'</div><div><div class="brand-title">消火設備点検</div><div class="brand-sub">CHECKLIST</div></div></div>';
     html += '  <div class="topbar-actions"><button class="icon-btn" data-action="open-data" aria-label="データ管理">'+ICONS.data+'</button></div>';
     html += '</div>';
-    html += '<div class="search-wrap"><div class="search-box"><span class="search-icon">'+ICONS.search+'</span><input type="text" id="search-input" placeholder="チェックリストや項目を検索" value="'+esc(state.search)+'"></div></div>';
 
     if(state.checklists.length === 0){
       html += '<div class="empty-state"><h3>まだチェックリストがありません</h3><p>消火器・消火栓・スプリンクラーなど、点検チェックリストを登録すると、現場でタップしながら消し込みできます。</p><button class="link-btn" data-action="seed-sample">例：消火器点検のサンプルを追加</button></div>';
       return html;
     }
 
+    html += '<div class="search-wrap"><div class="search-box"><span class="search-icon">'+ICONS.search+'</span><input type="text" id="search-input" placeholder="チェックリストや項目を検索" value="'+esc(state.search)+'"></div></div>';
+    html += '<div id="home-results">' + renderHomeResults() + '</div>';
+    return html;
+  }
+
+  function renderHomeResults(){
+    var q = state.search.trim();
+    var filtered = state.checklists.filter(function(w){ return matches(w, q); });
+    var recent = state.checklists.filter(function(w){ return w.lastUsedAt; })
+      .sort(function(a,b){ return b.lastUsedAt - a.lastUsedAt; }).slice(0,4);
+
+    var html = '';
     if(!q && recent.length){
       html += '<div class="section-label">最近使ったチェックリスト</div>';
       html += '<div class="tag-list">' + recent.map(renderTagCard).join('') + '</div>';
@@ -657,7 +663,11 @@
   function attachDynamic(){
     var search = document.getElementById('search-input');
     if(search){
-      search.addEventListener('input', function(){ state.search = search.value; render(); setTimeout(function(){ var s2=document.getElementById('search-input'); if(s2){ s2.focus(); s2.setSelectionRange(s2.value.length, s2.value.length);} }, 0); });
+      search.addEventListener('input', function(){
+        state.search = search.value;
+        var resultsEl = document.getElementById('home-results');
+        if(resultsEl) resultsEl.innerHTML = renderHomeResults();
+      });
     }
     var name = document.getElementById('wf-name');
     var desc = document.getElementById('wf-desc');
