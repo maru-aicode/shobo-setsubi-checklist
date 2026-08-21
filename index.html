@@ -698,6 +698,14 @@
 
     if(action === 'add-item'){
       var container = document.getElementById('items-container');
+      var existingInputs = container.querySelectorAll('[data-item-input]');
+      var lastInput = existingInputs.length ? existingInputs[existingInputs.length - 1] : null;
+      if(lastInput && lastInput.value.trim() === ''){
+        lastInput.scrollIntoView({ behavior:'smooth', block:'center' });
+        lastInput.focus();
+        showToast('先に入力してから追加してください');
+        return;
+      }
       var newId = uid();
       container.insertAdjacentHTML('beforeend', renderItemRow({id:newId, text:''}, container.children.length));
       var newRow = container.querySelector('.item-row[data-item-id="'+newId+'"]');
