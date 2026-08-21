@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1c1f1e">
+<meta name="description" content="消火設備の点検ワークフローをチェックリストとして登録し、タップで消し込みながら完了させるPWAアプリ">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<title>消火設備点検チェックリスト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans+JP:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c1f1e;
+    --ink-soft:#2a2d2b;
+    --paper:#eeeadf;
+    --paper-dim:#e2ddcc;
+    --paper-line: rgba(28,31,30,0.16);
+    --steel:#48565e;
+    --steel-dark:#33414a;
+    --caution:#df9430;
+    --caution-dark:#a86c1e;
+    --pass:#2f6b4f;
+    --pass-light:#e3ede6;
+    --danger:#b23b3b;
+    --danger-light:#f3e0de;
+    --shadow-tag: 0 2px 0 rgba(0,0,0,0.08);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    background: var(--ink);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(255,255,255,0.02), transparent 45%);
+    font-family: 'IBM Plex Sans JP', 'IBM Plex Sans', sans-serif;
+    color: var(--paper);
+    min-height: 100vh;
+    display:flex;
+    flex-direction:row;
+    justify-content:center;
+  }
+  #app{
+    width:100%;
+    max-width: 480px;
+    min-height: 100vh;
+    display:flex;
+    flex-direction:column;
+    flex-shrink:0;
+    position:relative;
+    padding-bottom: 96px;
+  }
+  h1,h2,h3{
+    font-family:'Barlow Condensed', sans-serif;
+    letter-spacing:0.02em;
+    margin:0;
+  }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  button{ font-family: inherit; cursor:pointer; }
+  input, textarea{ font-family: inherit; }
+
+  /* ---------- topbar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 22px 20px 14px;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:34px; height:34px; border-radius:6px;
+    background: var(--caution);
+    display:flex; align-items:center; justify-content:center;
+    color: var(--ink); font-weight:700; font-size:15px;
+    font-family:'Barlow Condensed', sans-serif;
+    transform: rotate(-4deg);
+    box-shadow: var(--shadow-tag);
+    flex-shrink:0;
+  }
+  .brand-mark svg, .icon-btn svg, .search-icon svg, .btn-run svg, .item-btn svg, .check-mark svg, .sheet-icon svg{
+    display:block;
+  }
+  .icon-btn, .search-icon, .sheet-icon{
+    display:flex; align-items:center; justify-content:center;
+  }
+  .btn-run, .item-btn{ line-height:1; }
+  .brand-title{ font-size:20px; font-weight:700; color:var(--paper); line-height:1.1; }
+  .brand-sub{ font-size:11px; color:#9a988c; letter-spacing:0.06em; margin-top:2px; }
+  .icon-btn{
+    width:38px; height:38px; border-radius:50%;
+    border:1px solid rgba(238,234,223,0.18);
+    background: rgba(255,255,255,0.03);
+    color: var(--paper);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px;
+  }
+  .icon-btn:active{ background: rgba(255,255,255,0.1); }
+  .topbar-actions{ display:flex; gap:8px; }
+
+  /* ---------- search ---------- */
+  .search-wrap{ padding: 0 20px 16px; }
+  .search-box{
+    display:flex; align-items:center; gap:8px;
+    background: rgba(255,255,255,0.05);
+    border:1px solid rgba(238,234,223,0.14);
+    border-radius:10px;
+    padding: 10px 12px;
+  }
+  .search-box input{
+    background:none; border:none; outline:none;
+    color: var(--paper); font-size:14px; width:100%;
+  }
+  .search-box input::placeholder{ color:#8a887c; }
+  .search-icon{ color:#9a988c; font-size:14px; }
+
+  /* ---------- section labels ---------- */
+  .section-label{
+    font-size:11px; letter-spacing:0.12em; color:#9a988c;
+    padding: 4px 20px 10px; text-transform:uppercase;
+    display:flex; justify-content:space-between; align-items:baseline;
+  }
+
+  /* ---------- content ---------- */
+  #content{ flex:1; width:100%; padding: 0 0 8px; display:flex; flex-direction:column; }
+  #content > *{ width:100%; flex-shrink:0; }
+
+  /* ---------- tag card (workflow row) ---------- */
+  .tag-list{ display:flex; flex-direction:column; gap:10px; padding: 0 20px; }
+  .tag-card{
+    position:relative;
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 14px 16px 14px 30px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    box-shadow: var(--shadow-tag);
+  }
+  .tag-card .hole{
+    position:absolute; left:12px; top:50%; transform:translateY(-50%);
+    width:12px; height:12px; border-radius:50%;
+    background: var(--ink);
+    box-shadow: inset 0 0 0 2px var(--paper-dim);
+  }
+  .tag-card .tag-info{ flex:1; min-width:0; }
+  .tag-card .tag-name{
+    font-family:'Barlow Condensed', sans-serif; font-weight:600;
+    font-size:18px; line-height:1.2;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .tag-card .tag-meta{
+    font-size:11px; color:#6b6a60; margin-top:3px;
+    font-family:'IBM Plex Mono', monospace;
+    display:flex; gap:8px; align-items:center;
+  }
+  .tag-card .tag-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .btn-run{
+    background: var(--caution); color: var(--ink);
+    border:none; border-radius:7px; padding:9px 12px;
+    font-weight:600; font-size:13px; display:flex; align-items:center; gap:5px;
+  }
+  .btn-run:active{ background: var(--caution-dark); }
+  .btn-plain{
+    background: transparent; border:1px solid var(--paper-line);
+    border-radius:7px; width:34px; height:34px;
+    display:flex; align-items:center; justify-content:center; color: var(--steel);
+  }
+
+  .empty-state{
+    margin: 30px 20px; padding: 30px 20px;
+    border: 1px dashed rgba(238,234,223,0.25);
+    border-radius: 12px; text-align:center;
+  }
+  .empty-state h3{ font-size:20px; color: var(--paper); margin-bottom:8px; }
+  .empty-state p{ font-size:13px; color:#9a988c; line-height:1.6; margin: 0 0 16px; }
+  .empty-state .link-btn{
+    background:none; border:none; color: var(--caution);
+    font-size:13px; font-weight:600; text-decoration: underline; padding:6px;
+  }
+
+  /* ---------- fab ---------- */
+  .fab{
+    position:fixed; bottom:26px; right:calc(50% - 240px + 20px);
+    width:56px; height:56px; border-radius:50%;
+    background: var(--caution); color: var(--ink);
+    border:none; font-size:26px; font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    z-index:20;
+  }
+  .fab:active{ transform: scale(0.94); }
+  @media (max-width: 480px){
+    .fab{ right:20px; }
+  }
+
+  /* ---------- sub views (edit/run/data) ---------- */
+  .subview-header{
+    display:flex; align-items:center; gap:12px;
+    padding: 20px 20px 16px;
+  }
+  .subview-title{ font-size:20px; font-weight:600; color:var(--paper); flex:1; min-width:0; }
+
+  .field-group{ padding: 0 20px 16px; }
+  .field-label{ font-size:11px; letter-spacing:0.08em; color:#9a988c; text-transform:uppercase; margin-bottom:6px; display:block; }
+  .field-input, .field-textarea{
+    width:100%; background: var(--paper); color: var(--ink);
+    border:none; border-radius:9px; padding: 12px 13px;
+    font-size:15px; outline:none;
+  }
+  .field-textarea{ min-height:64px; resize:vertical; font-family:inherit; }
+  .field-input:focus, .field-textarea:focus{ box-shadow: 0 0 0 2px var(--caution); }
+  .field-error{ color:#e8a3a3; font-size:12px; margin-top:6px; }
+
+  .item-row{
+    display:flex; align-items:center; gap:8px;
+    background: var(--paper); border-radius:9px;
+    padding: 8px 8px 8px 12px; margin-bottom:8px;
+  }
+  .item-row input{
+    flex:1; border:none; background:none; outline:none; color: var(--ink); font-size:14px; min-width:0;
+  }
+  .item-row .item-btn{
+    width:30px; height:30px; border:none; background:none; color:#8a887c;
+    display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;
+  }
+  .item-row .item-btn:active{ color: var(--danger); }
+  .add-item-btn{
+    width:100%; border: 1px dashed var(--paper-line); background:none; color: var(--paper);
+    border-radius:9px; padding:12px; font-size:13px; font-weight:600;
+    display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:20px;
+  }
+
+  .primary-btn{
+    width:100%; background: var(--caution); color: var(--ink);
+    border:none; border-radius:10px; padding:14px; font-size:15px; font-weight:700;
+  }
+  .primary-btn:active{ background: var(--caution-dark); }
+  .danger-btn{
+    width:100%; background: transparent; color:#e8a3a3;
+    border:1px solid rgba(178,59,59,0.5); border-radius:10px; padding:12px; font-size:13px; font-weight:600;
+    margin-top:10px;
+  }
+  .btn-block-pad{ padding: 4px 20px 20px; }
+
+  /* ---------- run view ---------- */
+  .run-tagheader{
+    margin: 0 20px 16px; background: var(--paper); color:var(--ink);
+    border-radius:12px; padding: 18px 18px 16px 34px; position:relative;
+  }
+  .run-tagheader .hole{
+    position:absolute; left:14px; top:22px; width:14px; height:14px; border-radius:50%;
+    background: var(--ink); box-shadow: inset 0 0 0 2px var(--paper-dim);
+  }
+  .run-tagheader .run-title{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:22px; }
+  .run-tagheader .run-sub{ font-size:11px; color:#6b6a60; font-family:'IBM Plex Mono', monospace; margin-top:4px; }
+  .run-progress-track{
+    margin-top:14px; height:6px; border-radius:4px; background: var(--paper-dim); overflow:hidden;
+  }
+  .run-progress-fill{ height:100%; background: var(--caution); border-radius:4px; transition: width 0.25s ease, background 0.25s ease; }
+  .run-progress-fill.done{ background: var(--pass); }
+  .run-tear{
+    margin: 0 20px 14px; border-top: 2px dashed rgba(238,234,223,0.2);
+  }
+
+  .check-list{ padding: 0 20px; display:flex; flex-direction:column; gap:9px; }
+  .check-row{
+    display:flex; align-items:center; gap:12px;
+    background: var(--paper); color: var(--ink);
+    border-radius:10px; padding: 14px 14px;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  .check-row.done{ background: var(--pass-light); }
+  .check-row .check-text{ flex:1; font-size:14px; line-height:1.5; }
+  .check-row.done .check-text{ text-decoration: line-through; color:#6b6a60; }
+  .check-row .check-mark{
+    width:26px; height:26px; border-radius:50%; border:2px solid var(--paper-line);
+    flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    font-size:14px; color:transparent;
+  }
+  .check-row.done .check-mark{ background: var(--pass); border-color: var(--pass); color: var(--pass-light); }
+
+  .run-actions{ padding: 20px 20px 10px; display:flex; gap:10px; }
+  .run-actions button{ flex:1; }
+  .btn-secondary{
+    background: transparent; border:1px solid rgba(238,234,223,0.25); color: var(--paper);
+    border-radius:10px; padding:13px; font-size:13px; font-weight:600;
+  }
+
+  /* ---------- complete stamp overlay ---------- */
+  .stamp-overlay{
+    position:fixed; inset:0; background: rgba(0,0,0,0.55);
+    display:flex; align-items:center; justify-content:center; z-index:50;
+    padding: 20px;
+  }
+  .stamp-card{
+    background: var(--paper); color: var(--ink); border-radius:14px;
+    padding: 36px 24px 26px; text-align:center; max-width:340px; width:100%;
+    position:relative; overflow:hidden;
+  }
+  .stamp-ring{
+    display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+    width:120px; height:120px; border-radius:50%;
+    border: 4px double var(--pass); color: var(--pass);
+    transform: rotate(-10deg);
+    margin-bottom: 18px;
+  }
+  .stamp-ring .stamp-word{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:22px; letter-spacing:0.05em; }
+  .stamp-ring .stamp-sub{ font-size:9px; letter-spacing:0.1em; margin-top:2px; }
+  .stamp-card h3{ font-size:20px; margin-bottom:6px; }
+  .stamp-card p{ font-size:12px; color:#6b6a60; font-family:'IBM Plex Mono', monospace; margin-bottom:20px; }
+
+  /* ---------- data sheet ---------- */
+  .sheet-overlay{
+    position:fixed; inset:0; background: rgba(0,0,0,0.5);
+    display:flex; align-items:flex-end; justify-content:center; z-index:50;
+  }
+  .sheet{
+    background: var(--ink-soft); width:100%; max-width:480px;
+    border-radius: 16px 16px 0 0; padding: 8px 20px 28px;
+    border-top: 1px solid rgba(238,234,223,0.1);
+  }
+  .sheet-handle{ width:36px; height:4px; background: rgba(238,234,223,0.25); border-radius:2px; margin: 10px auto 18px; }
+  .sheet h3{ font-size:18px; color:var(--paper); margin-bottom:4px; }
+  .sheet p.desc{ font-size:12px; color:#9a988c; margin: 0 0 18px; line-height:1.6; }
+  .sheet-row{
+    display:flex; align-items:center; gap:12px;
+    padding: 14px 4px; border-top: 1px solid rgba(238,234,223,0.08);
+  }
+  .sheet-row:first-of-type{ border-top:none; }
+  .sheet-row .sheet-icon{
+    width:36px; height:36px; border-radius:9px; background: rgba(255,255,255,0.06);
+    display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;
+  }
+  .sheet-row .sheet-text{ flex:1; }
+  .sheet-row .sheet-text .t{ font-size:14px; font-weight:600; color:var(--paper); }
+  .sheet-row .sheet-text .s{ font-size:11px; color:#9a988c; margin-top:1px; }
+  .sheet-row button{ background:none; border:1px solid rgba(238,234,223,0.2); color:var(--paper); border-radius:8px; padding:8px 14px; font-size:12px; font-weight:600; }
+  .sheet-close{
+    width:100%; margin-top:14px; background:none; border:none; color:#9a988c; font-size:13px; padding:10px;
+  }
+  #import-file{ display:none; }
+
+  .loading-screen{ display:flex; align-items:center; justify-content:center; min-height:60vh; color:#9a988c; font-size:13px; letter-spacing:0.08em; }
+  .toast{
+    position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+    background: var(--paper); color: var(--ink); padding:10px 18px; border-radius:8px;
+    font-size:13px; font-weight:600; z-index:60; box-shadow:0 4px 14px rgba(0,0,0,0.3);
+    opacity:0; pointer-events:none; transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(-4px); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="content" class="loading-screen">読み込み中…</div>
+</div>
+<input type="file" id="import-file" accept="application/json">
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var STORE_KEY = 'workflows-data';
+  var state = { workflows: [], view: 'home', currentId: null, search: '', runChecked: {} };
+
+  var ICONS = {
+    check: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    data: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>',
+    search: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+    back: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
+    reset: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+    close: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    play: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21"/></svg>',
+    up: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>',
+    down: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>'
+  };
+
+  function uid(){
+    return (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+  }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function fmtDate(ts){
+    if(!ts) return '未実施';
+    var d = new Date(ts);
+    return d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  }
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 1800);
+  }
+
+  async function loadWorkflows(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(Array.isArray(parsed)) return parsed;
+      }
+    }catch(e){ /* no data yet, or storage unavailable */ }
+    return [];
+  }
+  async function saveWorkflows(){
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify(state.workflows));
+    }catch(e){ showToast('保存に失敗しました（端末の空き容量をご確認ください）'); }
+  }
+
+  function findWorkflow(id){
+    return state.workflows.find(function(w){ return w.id === id; });
+  }
+
+  function seedSample(){
+    var wf = {
+      id: uid(),
+      name: '消火器点検',
+      description: '設置場所の消火器を月次で点検する',
+      items: [
+        { id: uid(), text: '製造年月日が10年以内か確認' },
+        { id: uid(), text: '埃があったらハケでふく' },
+        { id: uid(), text: 'ホースのつまりや粉が出てないか確認' },
+        { id: uid(), text: '圧力針が緑色の範囲内にあるか確認' },
+        { id: uid(), text: '安全栓がしっかりとささっているか確認' },
+        { id: uid(), text: '底が錆びていないか確認' }
+      ],
+      createdAt: Date.now(), updatedAt: Date.now(), lastUsedAt: null
+    };
+    state.workflows.unshift(wf);
+    saveWorkflows();
+    render();
+  }
+
+  /* ---------------- render root ---------------- */
+  function render(){
+    var c = document.getElementById('content');
+    if(state.view === 'home') c.innerHTML = renderHome();
+    else if(state.view === 'edit') c.innerHTML = renderEdit();
+    else if(state.view === 'run') c.innerHTML = renderRun();
+    attachDynamic();
+  }
+
+  /* ---------------- HOME ---------------- */
+  function matches(wf, q){
+    if(!q) return true;
+    q = q.toLowerCase();
+    if(wf.name.toLowerCase().indexOf(q) !== -1) return true;
+    if((wf.description||'').toLowerCase().indexOf(q) !== -1) return true;
+    return wf.items.some(function(it){ return it.text.toLowerCase().indexOf(q) !== -1; });
+  }
+
+  function renderHome(){
+    var q = state.search.trim();
+    var filtered = state.workflows.filter(function(w){ return matches(w, q); });
+    var recent = state.workflows.filter(function(w){ return w.lastUsedAt; })
+      .sort(function(a,b){ return b.lastUsedAt - a.lastUsedAt; }).slice(0,4);
+
+    var html = '';
+    html += '<div class="topbar">';
+    html += '  <div class="brand"><div class="brand-mark">'+ICONS.check+'</div><div><div class="brand-title">消火設備点検</div><div class="brand-sub">CHECKLIST</div></div></div>';
+    html += '  <div class="topbar-actions"><button class="icon-btn" data-action="open-data" aria-label="データ管理">'+ICONS.data+'</button></div>';
+    html += '</div>';
+    html += '<div class="search-wrap"><div class="search-box"><span class="search-icon">'+ICONS.search+'</span><input type="text" id="search-input" placeholder="ワークフローや項目を検索" value="'+esc(state.search)+'"></div></div>';
+
+    if(state.workflows.length === 0){
+      html += '<div class="empty-state"><h3>まだタグがありません</h3><p>消火器・消火栓・スプリンクラーなど、点検ワークフローを登録すると、現場でタップしながら消し込みできます。</p><button class="link-btn" data-action="seed-sample">例：消火器点検のサンプルを追加</button></div>';
+      return html;
+    }
+
+    if(!q && recent.length){
+      html += '<div class="section-label">最近使ったワークフロー</div>';
+      html += '<div class="tag-list">' + recent.map(renderTagCard).join('') + '</div>';
+      html += '<div style="height:22px"></div>';
+    }
+
+    html += '<div class="section-label">'+(q ? '検索結果 ('+filtered.length+')' : 'すべてのワークフロー')+'</div>';
+    if(filtered.length === 0){
+      html += '<div class="empty-state"><h3>見つかりません</h3><p>別のキーワードで検索してください。</p></div>';
+    } else {
+      html += '<div class="tag-list">' + filtered.map(renderTagCard).join('') + '</div>';
+    }
+    return html;
+  }
+
+  function renderTagCard(wf){
+    return ''+
+      '<div class="tag-card" data-action="edit-workflow" data-id="'+wf.id+'">'+
+        '<div class="hole"></div>'+
+        '<div class="tag-info">'+
+          '<div class="tag-name">'+esc(wf.name)+'</div>'+
+          '<div class="tag-meta"><span>'+wf.items.length+'項目</span><span>・</span><span>'+fmtDate(wf.lastUsedAt)+'</span></div>'+
+        '</div>'+
+        '<div class="tag-actions">'+
+          '<button class="btn-run" data-action="start-run" data-id="'+wf.id+'" data-stop="1">'+ICONS.play+' 開始</button>'+
+        '</div>'+
+      '</div>';
+  }
+
+  /* ---------------- EDIT ---------------- */
+  function renderEdit(){
+    var isNew = !state.currentId;
+    var wf = isNew ? { id:null, name:'', description:'', items:[{id:uid(),text:''}] } : findWorkflow(state.currentId);
+    if(!wf){ state.view='home'; return renderHome(); }
+    var html = '';
+    html += '<div class="subview-header"><button class="icon-btn" data-action="go-home">'+ICONS.back+'</button><div class="subview-title">'+(isNew?'新規ワークフロー':'ワークフローを編集')+'</div></div>';
+    html += '<div class="field-group"><span class="field-label">ワークフロー名</span><input class="field-input" id="wf-name" type="text" placeholder="例：消火器点検" value="'+esc(wf.name)+'"></div>';
+    html += '<div class="field-group"><span class="field-label">説明（任意）</span><textarea class="field-textarea" id="wf-desc" placeholder="このワークフローの目的や対象を記入">'+esc(wf.description||'')+'</textarea></div>';
+    html += '<div class="field-group"><span class="field-label">チェックリスト項目</span>';
+    html += '<div id="items-container">' + wf.items.map(renderItemRow).join('') + '</div>';
+    html += '<button class="add-item-btn" data-action="add-item">＋ 項目を追加</button>';
+    html += '</div>';
+    html += '<div id="edit-error" class="field-error" style="padding:0 20px 12px; display:none;"></div>';
+    html += '<div class="btn-block-pad">';
+    html += '<button class="primary-btn" data-action="save-workflow" data-id="'+(wf.id||'')+'">保存する</button>';
+    if(!isNew) html += '<button class="danger-btn" data-action="delete-workflow" data-id="'+wf.id+'">このワークフローを削除</button>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderItemRow(item, idx){
+    return ''+
+      '<div class="item-row" data-item-id="'+item.id+'">'+
+        '<input type="text" value="'+esc(item.text)+'" placeholder="確認する内容を入力" data-item-input="'+item.id+'">'+
+        '<button class="item-btn" data-action="remove-item" data-item-id="'+item.id+'">'+ICONS.close+'</button>'+
+      '</div>';
+  }
+
+  /* ---------------- RUN ---------------- */
+  function renderRun(){
+    var wf = findWorkflow(state.currentId);
+    if(!wf){ state.view='home'; return renderHome(); }
+    var checked = state.runChecked;
+    var doneCount = wf.items.filter(function(it){ return checked[it.id]; }).length;
+    var total = wf.items.length;
+    var pct = total ? Math.round(doneCount/total*100) : 0;
+    var allDone = total > 0 && doneCount === total;
+
+    var html = '';
+    html += '<div class="subview-header"><button class="icon-btn" data-action="go-home">'+ICONS.back+'</button><div class="subview-title">実行中</div><button class="icon-btn" data-action="reset-run" aria-label="リセット">'+ICONS.reset+'</button></div>';
+    html += '<div class="run-tagheader"><div class="hole"></div>';
+    html += '<div class="run-title">'+esc(wf.name)+'</div>';
+    html += '<div class="run-sub">'+doneCount+' / '+total+' 完了</div>';
+    html += '<div class="run-progress-track"><div class="run-progress-fill'+(allDone?' done':'')+'" style="width:'+pct+'%"></div></div>';
+    html += '</div>';
+    html += '<div class="run-tear"></div>';
+    html += '<div class="check-list">';
+    wf.items.forEach(function(it, idx){
+      var isDone = !!checked[it.id];
+      html += '<div class="check-row'+(isDone?' done':'')+'" data-action="toggle-item" data-item-id="'+it.id+'">'+
+        '<span class="check-text">'+esc(it.text)+'</span>'+
+        '<span class="check-mark">'+ICONS.check+'</span>'+
+      '</div>';
+    });
+    html += '</div>';
+    if(allDone){
+      html += renderStampOverlay(wf);
+    }
+    return html;
+  }
+
+  function renderStampOverlay(wf){
+    return ''+
+    '<div class="stamp-overlay" data-action="close-stamp">'+
+      '<div class="stamp-card">'+
+        '<div class="stamp-ring"><div class="stamp-word">COMPLETE</div><div class="stamp-sub mono">'+esc(wf.name)+'</div></div>'+
+        '<h3>点検完了</h3>'+
+        '<p class="mono">'+fmtDate(Date.now())+'</p>'+
+        '<button class="primary-btn" data-action="finish-run" data-id="'+wf.id+'">閉じてホームへ</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  /* ---------------- DATA SHEET ---------------- */
+  function openDataSheet(){
+    var wrap = document.createElement('div');
+    wrap.className = 'sheet-overlay';
+    wrap.id = 'data-sheet';
+    wrap.setAttribute('data-action', 'close-sheet');
+    wrap.innerHTML = ''+
+      '<div class="sheet" data-stop="1">'+
+        '<div class="sheet-handle"></div>'+
+        '<h3>データ管理</h3>'+
+        '<p class="desc">登録したワークフローをファイルとして書き出し・読み込みできます。端末の移行やバックアップに使えます。</p>'+
+        '<div class="sheet-row"><div class="sheet-icon">'+ICONS.down+'</div><div class="sheet-text"><div class="t">エクスポート</div><div class="s">全ワークフローをJSONファイルで保存</div></div><button data-action="export-data">書き出す</button></div>'+
+        '<div class="sheet-row"><div class="sheet-icon">'+ICONS.up+'</div><div class="sheet-text"><div class="t">インポート</div><div class="s">JSONファイルからワークフローを読み込み</div></div><button data-action="import-data">読み込む</button></div>'+
+        '<button class="sheet-close" data-action="close-sheet">閉じる</button>'+
+      '</div>';
+    document.getElementById('app').appendChild(wrap);
+  }
+  function closeDataSheet(){
+    var el = document.getElementById('data-sheet');
+    if(el) el.remove();
+  }
+
+  function exportData(){
+    var payload = { app:'workflow-checklist', version:1, exportedAt: new Date().toISOString(), workflows: state.workflows };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'workflows-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('書き出しました');
+  }
+
+  function importData(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var data = JSON.parse(reader.result);
+        var list = Array.isArray(data) ? data : data.workflows;
+        if(!Array.isArray(list)) throw new Error('invalid');
+        var added = 0;
+        list.forEach(function(wf){
+          if(!wf || !wf.name || !Array.isArray(wf.items)) return;
+          state.workflows.unshift({
+            id: uid(),
+            name: String(wf.name),
+            description: String(wf.description || ''),
+            items: wf.items.filter(function(it){ return it && it.text; }).map(function(it){ return { id: uid(), text: String(it.text) }; }),
+            createdAt: Date.now(), updatedAt: Date.now(), lastUsedAt: null
+          });
+          added++;
+        });
+        saveWorkflows();
+        closeDataSheet();
+        render();
+        showToast(added + '件のワークフローを読み込みました');
+      }catch(e){
+        showToast('読み込みに失敗しました。ファイル形式を確認してください');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------------- event wiring ---------------- */
+  function attachDynamic(){
+    var search = document.getElementById('search-input');
+    if(search){
+      search.addEventListener('input', function(){ state.search = search.value; render(); setTimeout(function(){ var s2=document.getElementById('search-input'); if(s2){ s2.focus(); s2.setSelectionRange(s2.value.length, s2.value.length);} }, 0); });
+    }
+    var name = document.getElementById('wf-name');
+    var desc = document.getElementById('wf-desc');
+    document.querySelectorAll('[data-item-input]').forEach(function(inp){
+      inp.addEventListener('input', function(){ /* value read on save */ });
+    });
+  }
+
+  document.getElementById('app').addEventListener('click', function(e){
+    var target = e.target.closest('[data-action]');
+    if(!target) return;
+    var action = target.getAttribute('data-action');
+    var id = target.getAttribute('data-id');
+
+    if(target.getAttribute('data-stop')) e.stopPropagation();
+
+    if(action === 'seed-sample'){ seedSample(); return; }
+    if(action === 'open-data'){ openDataSheet(); return; }
+    if(action === 'close-sheet' && e.target === target){ closeDataSheet(); return; }
+    if(action === 'export-data'){ exportData(); return; }
+    if(action === 'import-data'){ document.getElementById('import-file').click(); return; }
+
+    if(action === 'go-home'){ state.view='home'; state.currentId=null; render(); return; }
+
+    if(action === 'edit-workflow'){ state.view='edit'; state.currentId=id; render(); return; }
+
+    if(action === 'add-item'){
+      var container = document.getElementById('items-container');
+      var newId = uid();
+      container.insertAdjacentHTML('beforeend', renderItemRow({id:newId, text:''}, container.children.length));
+      var newInput = container.querySelector('[data-item-input="'+newId+'"]');
+      if(newInput) newInput.focus();
+      return;
+    }
+    if(action === 'remove-item'){
+      var itemId = target.getAttribute('data-item-id');
+      var row = document.querySelector('.item-row[data-item-id="'+itemId+'"]');
+      if(row){
+        var container = document.getElementById('items-container');
+        if(container.children.length <= 1){ showToast('最低1つの項目が必要です'); return; }
+        row.remove();
+      }
+      return;
+    }
+
+    if(action === 'save-workflow'){
+      var nameVal = document.getElementById('wf-name').value.trim();
+      var descVal = document.getElementById('wf-desc').value.trim();
+      var errEl = document.getElementById('edit-error');
+      var itemInputs = document.querySelectorAll('[data-item-input]');
+      var items = [];
+      itemInputs.forEach(function(inp){
+        var v = inp.value.trim();
+        if(v) items.push({ id: inp.getAttribute('data-item-input'), text: v });
+      });
+      if(!nameVal){ errEl.textContent = 'ワークフロー名を入力してください'; errEl.style.display='block'; return; }
+      if(items.length === 0){ errEl.textContent = 'チェックリスト項目を1つ以上入力してください'; errEl.style.display='block'; return; }
+      errEl.style.display='none';
+
+      if(id){
+        var wf = findWorkflow(id);
+        wf.name = nameVal; wf.description = descVal; wf.items = items; wf.updatedAt = Date.now();
+      } else {
+        state.workflows.unshift({ id: uid(), name: nameVal, description: descVal, items: items, createdAt: Date.now(), updatedAt: Date.now(), lastUsedAt: null });
+      }
+      saveWorkflows();
+      state.view = 'home'; state.currentId = null;
+      render();
+      showToast('保存しました');
+      return;
+    }
+
+    if(action === 'delete-workflow'){
+      if(!confirm('このワークフローを削除しますか？この操作は取り消せません。')) return;
+      state.workflows = state.workflows.filter(function(w){ return w.id !== id; });
+      saveWorkflows();
+      state.view = 'home'; state.currentId = null;
+      render();
+      showToast('削除しました');
+      return;
+    }
+
+    if(action === 'start-run'){
+      state.currentId = id;
+      var wf = findWorkflow(id);
+      state.runChecked = {};
+      state.view = 'run';
+      render();
+      return;
+    }
+    if(action === 'toggle-item'){
+      var iid = target.getAttribute('data-item-id');
+      state.runChecked[iid] = !state.runChecked[iid];
+      render();
+      return;
+    }
+    if(action === 'reset-run'){
+      state.runChecked = {};
+      render();
+      return;
+    }
+    if(action === 'finish-run'){
+      var wf = findWorkflow(id);
+      if(wf){ wf.lastUsedAt = Date.now(); saveWorkflows(); }
+      state.runChecked = {};
+      state.view = 'home'; state.currentId = null;
+      render();
+      return;
+    }
+  });
+
+  document.getElementById('import-file').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if(file) importData(file);
+    e.target.value = '';
+  });
+
+  document.getElementById('app').insertAdjacentHTML('beforeend', '<button class="fab" data-action="new-workflow" style="display:none">＋</button>');
+  document.getElementById('app').addEventListener('click', function(e){
+    var target = e.target.closest('[data-action="new-workflow"]');
+    if(target){ state.view='edit'; state.currentId=null; render(); }
+  });
+
+  function syncFab(){
+    var fab = document.querySelector('.fab');
+    fab.style.display = (state.view === 'home' && state.workflows.length > 0) ? 'flex' : 'none';
+  }
+  var origRender = render;
+  render = function(){ origRender(); syncFab(); };
+
+  (async function init(){
+    state.workflows = await loadWorkflows();
+    render();
+  })();
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('service-worker.js').catch(function(){ /* offline support unavailable */ });
+    });
+  }
+})();
+</script>
+</body>
+</html>

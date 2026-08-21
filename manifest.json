@@ -1,0 +1,32 @@
+{
+  "name": "消火設備点検チェックリスト",
+  "short_name": "消火設備点検",
+  "description": "消火器・消火栓・スプリンクラーなど消火設備の点検ワークフローをチェックリストとして登録し、タップで消し込みながら完了させるアプリ",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1c1f1e",
+  "theme_color": "#1c1f1e",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
