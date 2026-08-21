@@ -129,7 +129,7 @@
   #content{ flex:1; width:100%; padding: 0 0 8px; display:flex; flex-direction:column; }
   #content > *{ width:100%; flex-shrink:0; }
 
-  /* ---------- tag card (workflow row) ---------- */
+  /* ---------- tag card (checklist row) ---------- */
   .tag-list{ display:flex; flex-direction:column; gap:10px; padding: 0 20px; }
   .tag-card{
     position:relative;
@@ -363,8 +363,9 @@
 
 <script>
 (function(){
-  var STORE_KEY = 'workflows-data';
-  var state = { workflows: [], view: 'home', currentId: null, search: '', runChecked: {} };
+  var STORE_KEY = 'checklists-data';
+  var LEGACY_STORE_KEY = 'workflows-data';
+  var state = { checklists: [], view: 'home', currentId: null, search: '', runChecked: {} };
 
   var ICONS = {
     check: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
@@ -398,24 +399,33 @@
     setTimeout(function(){ t.classList.remove('show'); }, 1800);
   }
 
-  async function loadWorkflows(){
+  async function loadChecklists(){
     try{
       var raw = localStorage.getItem(STORE_KEY);
       if(raw){
         var parsed = JSON.parse(raw);
         if(Array.isArray(parsed)) return parsed;
       }
+      var legacyRaw = localStorage.getItem(LEGACY_STORE_KEY);
+      if(legacyRaw){
+        var legacyParsed = JSON.parse(legacyRaw);
+        if(Array.isArray(legacyParsed)){
+          localStorage.setItem(STORE_KEY, legacyRaw);
+          localStorage.removeItem(LEGACY_STORE_KEY);
+          return legacyParsed;
+        }
+      }
     }catch(e){ /* no data yet, or storage unavailable */ }
     return [];
   }
-  async function saveWorkflows(){
+  async function saveChecklists(){
     try{
-      localStorage.setItem(STORE_KEY, JSON.stringify(state.workflows));
+      localStorage.setItem(STORE_KEY, JSON.stringify(state.checklists));
     }catch(e){ showToast('保存に失敗しました（端末の空き容量をご確認ください）'); }
   }
 
-  function findWorkflow(id){
-    return state.workflows.find(function(w){ return w.id === id; });
+  function findChecklist(id){
+    return state.checklists.find(function(w){ return w.id === id; });
   }
 
   function seedSample(){
@@ -433,8 +443,8 @@
       ],
       createdAt: Date.now(), updatedAt: Date.now(), lastUsedAt: null
     };
-    state.workflows.unshift(wf);
-    saveWorkflows();
+    state.checklists.unshift(wf);
+    saveChecklists();
     render();
   }
 
@@ -458,8 +468,8 @@
 
   function renderHome(){
     var q = state.search.trim();
-    var filtered = state.workflows.filter(function(w){ return matches(w, q); });
-    var recent = state.workflows.filter(function(w){ return w.lastUsedAt; })
+    var filtered = state.checklists.filter(function(w){ return matches(w, q); });
+    var recent = state.checklists.filter(function(w){ return w.lastUsedAt; })
       .sort(function(a,b){ return b.lastUsedAt - a.lastUsedAt; }).slice(0,4);
 
     var html = '';
@@ -469,7 +479,7 @@
     html += '</div>';
     html += '<div class="search-wrap"><div class="search-box"><span class="search-icon">'+ICONS.search+'</span><input type="text" id="search-input" placeholder="チェックリストや項目を検索" value="'+esc(state.search)+'"></div></div>';
 
-    if(state.workflows.length === 0){
+    if(state.checklists.length === 0){
       html += '<div class="empty-state"><h3>まだチェックリストがありません</h3><p>消火器・消火栓・スプリンクラーなど、点検チェックリストを登録すると、現場でタップしながら消し込みできます。</p><button class="link-btn" data-action="seed-sample">例：消火器点検のサンプルを追加</button></div>';
       return html;
     }
@@ -491,7 +501,7 @@
 
   function renderTagCard(wf){
     return ''+
-      '<div class="tag-card" data-action="edit-workflow" data-id="'+wf.id+'">'+
+      '<div class="tag-card" data-action="edit-checklist" data-id="'+wf.id+'">'+
         '<div class="hole"></div>'+
         '<div class="tag-info">'+
           '<div class="tag-name">'+esc(wf.name)+'</div>'+
@@ -506,7 +516,7 @@
   /* ---------------- EDIT ---------------- */
   function renderEdit(){
     var isNew = !state.currentId;
-    var wf = isNew ? { id:null, name:'', description:'', items:[{id:uid(),text:''}] } : findWorkflow(state.currentId);
+    var wf = isNew ? { id:null, name:'', description:'', items:[{id:uid(),text:''}] } : findChecklist(state.currentId);
     if(!wf){ state.view='home'; return renderHome(); }
     var html = '';
     html += '<div class="subview-header"><button class="icon-btn" data-action="go-home">'+ICONS.back+'</button><div class="subview-title">'+(isNew?'新規チェックリスト':'チェックリストを編集')+'</div></div>';
@@ -518,8 +528,8 @@
     html += '</div>';
     html += '<div id="edit-error" class="field-error" style="padding:0 20px 12px; display:none;"></div>';
     html += '<div class="btn-block-pad">';
-    html += '<button class="primary-btn" data-action="save-workflow" data-id="'+(wf.id||'')+'">保存する</button>';
-    if(!isNew) html += '<button class="danger-btn" data-action="delete-workflow" data-id="'+wf.id+'">このチェックリストを削除</button>';
+    html += '<button class="primary-btn" data-action="save-checklist" data-id="'+(wf.id||'')+'">保存する</button>';
+    if(!isNew) html += '<button class="danger-btn" data-action="delete-checklist" data-id="'+wf.id+'">このチェックリストを削除</button>';
     html += '</div>';
     return html;
   }
@@ -534,7 +544,7 @@
 
   /* ---------------- RUN ---------------- */
   function renderRun(){
-    var wf = findWorkflow(state.currentId);
+    var wf = findChecklist(state.currentId);
     if(!wf){ state.view='home'; return renderHome(); }
     var checked = state.runChecked;
     var doneCount = wf.items.filter(function(it){ return checked[it.id]; }).length;
@@ -600,12 +610,12 @@
   }
 
   function exportData(){
-    var payload = { app:'workflow-checklist', version:1, exportedAt: new Date().toISOString(), workflows: state.workflows };
+    var payload = { app:'checklist-app', version:1, exportedAt: new Date().toISOString(), checklists: state.checklists };
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'workflows-' + new Date().toISOString().slice(0,10) + '.json';
+    a.download = 'checklists-' + new Date().toISOString().slice(0,10) + '.json';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -618,12 +628,12 @@
     reader.onload = function(){
       try{
         var data = JSON.parse(reader.result);
-        var list = Array.isArray(data) ? data : data.workflows;
+        var list = Array.isArray(data) ? data : (data.checklists || data.workflows);
         if(!Array.isArray(list)) throw new Error('invalid');
         var added = 0;
         list.forEach(function(wf){
           if(!wf || !wf.name || !Array.isArray(wf.items)) return;
-          state.workflows.unshift({
+          state.checklists.unshift({
             id: uid(),
             name: String(wf.name),
             description: String(wf.description || ''),
@@ -632,7 +642,7 @@
           });
           added++;
         });
-        saveWorkflows();
+        saveChecklists();
         closeDataSheet();
         render();
         showToast(added + '件のチェックリストを読み込みました');
@@ -672,7 +682,7 @@
 
     if(action === 'go-home'){ state.view='home'; state.currentId=null; render(); return; }
 
-    if(action === 'edit-workflow'){ state.view='edit'; state.currentId=id; render(); return; }
+    if(action === 'edit-checklist'){ state.view='edit'; state.currentId=id; render(); return; }
 
     if(action === 'add-item'){
       var container = document.getElementById('items-container');
@@ -693,7 +703,7 @@
       return;
     }
 
-    if(action === 'save-workflow'){
+    if(action === 'save-checklist'){
       var nameVal = document.getElementById('wf-name').value.trim();
       var descVal = document.getElementById('wf-desc').value.trim();
       var errEl = document.getElementById('edit-error');
@@ -708,22 +718,22 @@
       errEl.style.display='none';
 
       if(id){
-        var wf = findWorkflow(id);
+        var wf = findChecklist(id);
         wf.name = nameVal; wf.description = descVal; wf.items = items; wf.updatedAt = Date.now();
       } else {
-        state.workflows.unshift({ id: uid(), name: nameVal, description: descVal, items: items, createdAt: Date.now(), updatedAt: Date.now(), lastUsedAt: null });
+        state.checklists.unshift({ id: uid(), name: nameVal, description: descVal, items: items, createdAt: Date.now(), updatedAt: Date.now(), lastUsedAt: null });
       }
-      saveWorkflows();
+      saveChecklists();
       state.view = 'home'; state.currentId = null;
       render();
       showToast('保存しました');
       return;
     }
 
-    if(action === 'delete-workflow'){
+    if(action === 'delete-checklist'){
       if(!confirm('このチェックリストを削除しますか？この操作は取り消せません。')) return;
-      state.workflows = state.workflows.filter(function(w){ return w.id !== id; });
-      saveWorkflows();
+      state.checklists = state.checklists.filter(function(w){ return w.id !== id; });
+      saveChecklists();
       state.view = 'home'; state.currentId = null;
       render();
       showToast('削除しました');
@@ -732,7 +742,7 @@
 
     if(action === 'start-run'){
       state.currentId = id;
-      var wf = findWorkflow(id);
+      var wf = findChecklist(id);
       state.runChecked = {};
       state.view = 'run';
       render();
@@ -750,8 +760,8 @@
       return;
     }
     if(action === 'finish-run'){
-      var wf = findWorkflow(id);
-      if(wf){ wf.lastUsedAt = Date.now(); saveWorkflows(); }
+      var wf = findChecklist(id);
+      if(wf){ wf.lastUsedAt = Date.now(); saveChecklists(); }
       state.runChecked = {};
       state.view = 'home'; state.currentId = null;
       render();
@@ -765,21 +775,21 @@
     e.target.value = '';
   });
 
-  document.getElementById('app').insertAdjacentHTML('beforeend', '<button class="fab" data-action="new-workflow" style="display:none">＋</button>');
+  document.getElementById('app').insertAdjacentHTML('beforeend', '<button class="fab" data-action="new-checklist" style="display:none">＋</button>');
   document.getElementById('app').addEventListener('click', function(e){
-    var target = e.target.closest('[data-action="new-workflow"]');
+    var target = e.target.closest('[data-action="new-checklist"]');
     if(target){ state.view='edit'; state.currentId=null; render(); }
   });
 
   function syncFab(){
     var fab = document.querySelector('.fab');
-    fab.style.display = (state.view === 'home' && state.workflows.length > 0) ? 'flex' : 'none';
+    fab.style.display = (state.view === 'home' && state.checklists.length > 0) ? 'flex' : 'none';
   }
   var origRender = render;
   render = function(){ origRender(); syncFab(); };
 
   (async function init(){
-    state.workflows = await loadWorkflows();
+    state.checklists = await loadChecklists();
     render();
   })();
 
