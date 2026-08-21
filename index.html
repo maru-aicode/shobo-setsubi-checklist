@@ -434,14 +434,15 @@
     var wf = {
       id: uid(),
       name: '消火器点検',
-      description: '設置場所の消火器を月次で点検する',
+      description: '設置場所の消火器を半年ごとに点検する',
       items: [
         { id: uid(), text: '製造年月日が10年以内か確認' },
         { id: uid(), text: '埃があったらハケでふく' },
         { id: uid(), text: 'ホースのつまりや粉が出てないか確認' },
         { id: uid(), text: '圧力針が緑色の範囲内にあるか確認' },
         { id: uid(), text: '安全栓がしっかりとささっているか確認' },
-        { id: uid(), text: '底が錆びていないか確認' }
+        { id: uid(), text: '底が錆びていないか確認' },
+        { id: uid(), text: 'すでにある検証シールを剥がして消火器のラベルと重ならないように新しい期間が書かれた検証シールを貼る' }
       ],
       createdAt: Date.now(), updatedAt: Date.now(), lastUsedAt: null
     };
