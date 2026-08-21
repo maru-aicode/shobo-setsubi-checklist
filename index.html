@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1c1f1e">
-<meta name="description" content="消火設備の点検ワークフローをチェックリストとして登録し、タップで消し込みながら完了させるPWAアプリ">
+<meta name="description" content="消火設備の点検チェックリストを登録し、タップで消し込みながら完了させるPWAアプリ">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
@@ -467,20 +467,20 @@
     html += '  <div class="brand"><div class="brand-mark">'+ICONS.check+'</div><div><div class="brand-title">消火設備点検</div><div class="brand-sub">CHECKLIST</div></div></div>';
     html += '  <div class="topbar-actions"><button class="icon-btn" data-action="open-data" aria-label="データ管理">'+ICONS.data+'</button></div>';
     html += '</div>';
-    html += '<div class="search-wrap"><div class="search-box"><span class="search-icon">'+ICONS.search+'</span><input type="text" id="search-input" placeholder="ワークフローや項目を検索" value="'+esc(state.search)+'"></div></div>';
+    html += '<div class="search-wrap"><div class="search-box"><span class="search-icon">'+ICONS.search+'</span><input type="text" id="search-input" placeholder="チェックリストや項目を検索" value="'+esc(state.search)+'"></div></div>';
 
     if(state.workflows.length === 0){
-      html += '<div class="empty-state"><h3>まだタグがありません</h3><p>消火器・消火栓・スプリンクラーなど、点検ワークフローを登録すると、現場でタップしながら消し込みできます。</p><button class="link-btn" data-action="seed-sample">例：消火器点検のサンプルを追加</button></div>';
+      html += '<div class="empty-state"><h3>まだチェックリストがありません</h3><p>消火器・消火栓・スプリンクラーなど、点検チェックリストを登録すると、現場でタップしながら消し込みできます。</p><button class="link-btn" data-action="seed-sample">例：消火器点検のサンプルを追加</button></div>';
       return html;
     }
 
     if(!q && recent.length){
-      html += '<div class="section-label">最近使ったワークフロー</div>';
+      html += '<div class="section-label">最近使ったチェックリスト</div>';
       html += '<div class="tag-list">' + recent.map(renderTagCard).join('') + '</div>';
       html += '<div style="height:22px"></div>';
     }
 
-    html += '<div class="section-label">'+(q ? '検索結果 ('+filtered.length+')' : 'すべてのワークフロー')+'</div>';
+    html += '<div class="section-label">'+(q ? '検索結果 ('+filtered.length+')' : 'すべてのチェックリスト')+'</div>';
     if(filtered.length === 0){
       html += '<div class="empty-state"><h3>見つかりません</h3><p>別のキーワードで検索してください。</p></div>';
     } else {
@@ -509,9 +509,9 @@
     var wf = isNew ? { id:null, name:'', description:'', items:[{id:uid(),text:''}] } : findWorkflow(state.currentId);
     if(!wf){ state.view='home'; return renderHome(); }
     var html = '';
-    html += '<div class="subview-header"><button class="icon-btn" data-action="go-home">'+ICONS.back+'</button><div class="subview-title">'+(isNew?'新規ワークフロー':'ワークフローを編集')+'</div></div>';
-    html += '<div class="field-group"><span class="field-label">ワークフロー名</span><input class="field-input" id="wf-name" type="text" placeholder="例：消火器点検" value="'+esc(wf.name)+'"></div>';
-    html += '<div class="field-group"><span class="field-label">説明（任意）</span><textarea class="field-textarea" id="wf-desc" placeholder="このワークフローの目的や対象を記入">'+esc(wf.description||'')+'</textarea></div>';
+    html += '<div class="subview-header"><button class="icon-btn" data-action="go-home">'+ICONS.back+'</button><div class="subview-title">'+(isNew?'新規チェックリスト':'チェックリストを編集')+'</div></div>';
+    html += '<div class="field-group"><span class="field-label">チェックリスト名</span><input class="field-input" id="wf-name" type="text" placeholder="例：消火器点検" value="'+esc(wf.name)+'"></div>';
+    html += '<div class="field-group"><span class="field-label">説明（任意）</span><textarea class="field-textarea" id="wf-desc" placeholder="このチェックリストの目的や対象を記入">'+esc(wf.description||'')+'</textarea></div>';
     html += '<div class="field-group"><span class="field-label">チェックリスト項目</span>';
     html += '<div id="items-container">' + wf.items.map(renderItemRow).join('') + '</div>';
     html += '<button class="add-item-btn" data-action="add-item">＋ 項目を追加</button>';
@@ -519,7 +519,7 @@
     html += '<div id="edit-error" class="field-error" style="padding:0 20px 12px; display:none;"></div>';
     html += '<div class="btn-block-pad">';
     html += '<button class="primary-btn" data-action="save-workflow" data-id="'+(wf.id||'')+'">保存する</button>';
-    if(!isNew) html += '<button class="danger-btn" data-action="delete-workflow" data-id="'+wf.id+'">このワークフローを削除</button>';
+    if(!isNew) html += '<button class="danger-btn" data-action="delete-workflow" data-id="'+wf.id+'">このチェックリストを削除</button>';
     html += '</div>';
     return html;
   }
@@ -587,9 +587,9 @@
       '<div class="sheet" data-stop="1">'+
         '<div class="sheet-handle"></div>'+
         '<h3>データ管理</h3>'+
-        '<p class="desc">登録したワークフローをファイルとして書き出し・読み込みできます。端末の移行やバックアップに使えます。</p>'+
-        '<div class="sheet-row"><div class="sheet-icon">'+ICONS.down+'</div><div class="sheet-text"><div class="t">エクスポート</div><div class="s">全ワークフローをJSONファイルで保存</div></div><button data-action="export-data">書き出す</button></div>'+
-        '<div class="sheet-row"><div class="sheet-icon">'+ICONS.up+'</div><div class="sheet-text"><div class="t">インポート</div><div class="s">JSONファイルからワークフローを読み込み</div></div><button data-action="import-data">読み込む</button></div>'+
+        '<p class="desc">登録したチェックリストをファイルとして書き出し・読み込みできます。端末の移行やバックアップに使えます。</p>'+
+        '<div class="sheet-row"><div class="sheet-icon">'+ICONS.down+'</div><div class="sheet-text"><div class="t">エクスポート</div><div class="s">全チェックリストをJSONファイルで保存</div></div><button data-action="export-data">書き出す</button></div>'+
+        '<div class="sheet-row"><div class="sheet-icon">'+ICONS.up+'</div><div class="sheet-text"><div class="t">インポート</div><div class="s">JSONファイルからチェックリストを読み込み</div></div><button data-action="import-data">読み込む</button></div>'+
         '<button class="sheet-close" data-action="close-sheet">閉じる</button>'+
       '</div>';
     document.getElementById('app').appendChild(wrap);
@@ -635,7 +635,7 @@
         saveWorkflows();
         closeDataSheet();
         render();
-        showToast(added + '件のワークフローを読み込みました');
+        showToast(added + '件のチェックリストを読み込みました');
       }catch(e){
         showToast('読み込みに失敗しました。ファイル形式を確認してください');
       }
@@ -703,7 +703,7 @@
         var v = inp.value.trim();
         if(v) items.push({ id: inp.getAttribute('data-item-input'), text: v });
       });
-      if(!nameVal){ errEl.textContent = 'ワークフロー名を入力してください'; errEl.style.display='block'; return; }
+      if(!nameVal){ errEl.textContent = 'チェックリスト名を入力してください'; errEl.style.display='block'; return; }
       if(items.length === 0){ errEl.textContent = 'チェックリスト項目を1つ以上入力してください'; errEl.style.display='block'; return; }
       errEl.style.display='none';
 
@@ -721,7 +721,7 @@
     }
 
     if(action === 'delete-workflow'){
-      if(!confirm('このワークフローを削除しますか？この操作は取り消せません。')) return;
+      if(!confirm('このチェックリストを削除しますか？この操作は取り消せません。')) return;
       state.workflows = state.workflows.filter(function(w){ return w.id !== id; });
       saveWorkflows();
       state.view = 'home'; state.currentId = null;
