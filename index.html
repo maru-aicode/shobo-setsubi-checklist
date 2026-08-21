@@ -218,12 +218,13 @@
   .field-error{ color:#e8a3a3; font-size:12px; margin-top:6px; }
 
   .item-row{
-    display:flex; align-items:center; gap:8px;
+    display:flex; align-items:flex-start; gap:8px;
     background: var(--paper); border-radius:9px;
-    padding: 8px 8px 8px 12px; margin-bottom:8px;
+    padding: 10px 8px 10px 12px; margin-bottom:8px;
   }
-  .item-row input{
+  .item-row textarea{
     flex:1; border:none; background:none; outline:none; color: var(--ink); font-size:14px; min-width:0;
+    resize:none; overflow:hidden; font-family:inherit; line-height:1.5; padding:2px 0;
   }
   .item-row .item-btn{
     width:30px; height:30px; border:none; background:none; color:#8a887c;
@@ -276,7 +277,7 @@
     transition: background 0.15s ease, opacity 0.15s ease;
   }
   .check-row.done{ background: var(--pass-light); }
-  .check-row .check-text{ flex:1; font-size:14px; line-height:1.5; }
+  .check-row .check-text{ flex:1; min-width:0; font-size:14px; line-height:1.5; overflow-wrap:anywhere; }
   .check-row.done .check-text{ text-decoration: line-through; color:#6b6a60; }
   .check-row .check-mark{
     width:26px; height:26px; border-radius:50%; border:2px solid var(--paper-line);
@@ -546,7 +547,7 @@
   function renderItemRow(item, idx){
     return ''+
       '<div class="item-row" data-item-id="'+item.id+'">'+
-        '<input type="text" value="'+esc(item.text)+'" placeholder="確認する内容を入力" data-item-input="'+item.id+'">'+
+        '<textarea rows="1" placeholder="確認する内容を入力" data-item-input="'+item.id+'">'+esc(item.text)+'</textarea>'+
         '<button class="item-btn" data-action="remove-item" data-item-id="'+item.id+'">'+ICONS.close+'</button>'+
       '</div>';
   }
@@ -663,6 +664,11 @@
   }
 
   /* ---------------- event wiring ---------------- */
+  function autoResizeItemTextarea(el){
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+
   function attachDynamic(){
     var search = document.getElementById('search-input');
     if(search){
@@ -675,7 +681,8 @@
     var name = document.getElementById('wf-name');
     var desc = document.getElementById('wf-desc');
     document.querySelectorAll('[data-item-input]').forEach(function(inp){
-      inp.addEventListener('input', function(){ /* value read on save */ });
+      autoResizeItemTextarea(inp);
+      inp.addEventListener('input', function(){ autoResizeItemTextarea(inp); });
     });
   }
 
@@ -710,6 +717,11 @@
       var newId = uid();
       container.insertAdjacentHTML('beforeend', renderItemRow({id:newId, text:''}, container.children.length));
       var newRow = container.querySelector('.item-row[data-item-id="'+newId+'"]');
+      var newTextarea = container.querySelector('[data-item-input="'+newId+'"]');
+      if(newTextarea){
+        autoResizeItemTextarea(newTextarea);
+        newTextarea.addEventListener('input', function(){ autoResizeItemTextarea(newTextarea); });
+      }
       if(newRow) newRow.scrollIntoView({ behavior:'smooth', block:'center' });
       return;
     }
