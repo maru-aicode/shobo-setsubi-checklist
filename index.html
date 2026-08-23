@@ -345,6 +345,20 @@
   .sheet-close{
     width:100%; margin-top:14px; background:none; border:none; color:#9a988c; font-size:13px; padding:10px;
   }
+  .paste-import{
+    margin-top: 10px; padding-top: 14px; border-top: 1px solid rgba(238,234,223,0.08);
+  }
+  .paste-import-label{ font-size:12px; color:#9a988c; margin-bottom:8px; }
+  .paste-import-textarea{
+    width:100%; min-height:70px; background: rgba(255,255,255,0.05);
+    border:1px solid rgba(238,234,223,0.14); border-radius:9px; color: var(--paper);
+    font-size:13px; padding:10px; font-family: 'IBM Plex Mono', monospace; resize:vertical;
+  }
+  .paste-import-textarea::placeholder{ color:#6b6a60; }
+  .paste-import-btn{
+    width:100%; margin-top:8px; background: rgba(255,255,255,0.06); color: var(--paper);
+    border:1px solid rgba(238,234,223,0.16); border-radius:9px; padding:11px; font-size:13px; font-weight:600;
+  }
   #import-file{ display:none; }
 
   .loading-screen{ display:flex; align-items:center; justify-content:center; min-height:60vh; color:#9a988c; font-size:13px; letter-spacing:0.08em; }
@@ -610,6 +624,10 @@
         '<p class="desc">登録したチェックリストをファイルとして書き出し・読み込みできます。端末の移行やバックアップに使えます。</p>'+
         '<div class="sheet-row"><div class="sheet-icon">'+ICONS.down+'</div><div class="sheet-text"><div class="t">エクスポート</div><div class="s">全チェックリストをJSONファイルで保存</div></div><button data-action="export-data">書き出す</button></div>'+
         '<div class="sheet-row"><div class="sheet-icon">'+ICONS.up+'</div><div class="sheet-text"><div class="t">インポート</div><div class="s">JSONファイルからチェックリストを読み込み</div></div><button data-action="import-data">読み込む</button></div>'+
+        '<div class="paste-import"><div class="paste-import-label">またはJSONのテキストを貼り付けてインポート</div>'+
+          '<textarea id="paste-import-text" class="paste-import-textarea" placeholder="ここにJSONテキストを貼り付け"></textarea>'+
+          '<button class="paste-import-btn" data-action="import-paste">貼り付けた内容を読み込む</button>'+
+        '</div>'+
         '<button class="sheet-close" data-action="close-sheet">閉じる</button>'+
       '</div>';
     document.getElementById('app').appendChild(wrap);
@@ -633,33 +651,40 @@
     showToast('書き出しました');
   }
 
+  function importFromText(rawText){
+    try{
+      var text = String(rawText || '').replace(/^\uFEFF/, '').trim();
+      if(!text) throw new Error('empty');
+      var data = JSON.parse(text);
+      var list = Array.isArray(data) ? data : (data.checklists || data.workflows);
+      if(!Array.isArray(list)) throw new Error('invalid');
+      var added = 0;
+      list.forEach(function(wf){
+        if(!wf || !wf.name || !Array.isArray(wf.items)) return;
+        state.checklists.unshift({
+          id: uid(),
+          name: String(wf.name),
+          description: String(wf.description || ''),
+          items: wf.items.filter(function(it){ return it && it.text; }).map(function(it){ return { id: uid(), text: String(it.text) }; }),
+          createdAt: Date.now(), updatedAt: Date.now(), lastUsedAt: null
+        });
+        added++;
+      });
+      saveChecklists();
+      closeDataSheet();
+      render();
+      showToast(added + '件のチェックリストを読み込みました');
+      return true;
+    }catch(e){
+      showToast('読み込みに失敗しました。内容を確認してください');
+      return false;
+    }
+  }
+
   function importData(file){
     var reader = new FileReader();
     reader.onload = function(){
-      try{
-        var text = String(reader.result || '').replace(/^\uFEFF/, '').trim();
-        var data = JSON.parse(text);
-        var list = Array.isArray(data) ? data : (data.checklists || data.workflows);
-        if(!Array.isArray(list)) throw new Error('invalid');
-        var added = 0;
-        list.forEach(function(wf){
-          if(!wf || !wf.name || !Array.isArray(wf.items)) return;
-          state.checklists.unshift({
-            id: uid(),
-            name: String(wf.name),
-            description: String(wf.description || ''),
-            items: wf.items.filter(function(it){ return it && it.text; }).map(function(it){ return { id: uid(), text: String(it.text) }; }),
-            createdAt: Date.now(), updatedAt: Date.now(), lastUsedAt: null
-          });
-          added++;
-        });
-        saveChecklists();
-        closeDataSheet();
-        render();
-        showToast(added + '件のチェックリストを読み込みました');
-      }catch(e){
-        showToast('読み込みに失敗しました。ファイル形式を確認してください');
-      }
+      importFromText(reader.result);
     };
     reader.readAsText(file);
   }
@@ -700,6 +725,13 @@
     if(action === 'close-sheet' && e.target === target){ closeDataSheet(); return; }
     if(action === 'export-data'){ exportData(); return; }
     if(action === 'import-data'){ document.getElementById('import-file').click(); return; }
+    if(action === 'import-paste'){
+      var pasteEl = document.getElementById('paste-import-text');
+      var text = pasteEl ? pasteEl.value : '';
+      if(!text.trim()){ showToast('テキストを貼り付けてください'); return; }
+      importFromText(text);
+      return;
+    }
 
     if(action === 'go-home'){ state.view='home'; state.currentId=null; render(); return; }
 
