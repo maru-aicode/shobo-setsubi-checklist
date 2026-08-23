@@ -361,7 +361,7 @@
 <div id="app">
   <div id="content" class="loading-screen">読み込み中…</div>
 </div>
-<input type="file" id="import-file" accept="application/json">
+<input type="file" id="import-file" accept=".json,application/json,text/plain,text/json,application/octet-stream">
 <div class="toast" id="toast"></div>
 
 <script>
@@ -637,7 +637,8 @@
     var reader = new FileReader();
     reader.onload = function(){
       try{
-        var data = JSON.parse(reader.result);
+        var text = String(reader.result || '').replace(/^\uFEFF/, '').trim();
+        var data = JSON.parse(text);
         var list = Array.isArray(data) ? data : (data.checklists || data.workflows);
         if(!Array.isArray(list)) throw new Error('invalid');
         var added = 0;
