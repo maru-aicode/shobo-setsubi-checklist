@@ -643,7 +643,9 @@
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'checklists-' + new Date().toISOString().slice(0,10) + '.json';
+    var now = new Date();
+    var localDate = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    a.download = 'checklists-' + localDate + '.json';
     document.body.appendChild(a);
     a.click();
     a.remove();
