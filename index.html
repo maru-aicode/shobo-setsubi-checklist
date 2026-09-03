@@ -690,7 +690,7 @@
 
     if(canShareFiles){
       var shareFile = new File([blob], finalName, { type:'application/json' });
-      navigator.share({ files:[shareFile], title: finalName })
+      navigator.share({ files:[shareFile] })
         .then(function(){ showToast('書き出しました'); })
         .catch(function(err){
           if(err && err.name === 'AbortError') return;
