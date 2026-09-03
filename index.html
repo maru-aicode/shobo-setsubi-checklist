@@ -316,6 +316,21 @@
   .stamp-card h3{ font-size:20px; margin-bottom:6px; }
   .stamp-card p{ font-size:12px; color:#6b6a60; font-family:'IBM Plex Mono', monospace; margin-bottom:20px; }
 
+  .export-dialog-card{ padding: 28px 24px 24px; text-align:left; }
+  .export-dialog-card h3{ text-align:center; }
+  .export-dialog-card p{ text-align:center; }
+  .export-filename-row{
+    display:flex; align-items:center; gap:6px;
+    background: var(--paper-dim); border-radius:9px; padding: 4px 4px 4px 12px; margin-bottom:18px;
+  }
+  .export-filename-input{
+    flex:1; min-width:0; border:none; background:none; outline:none; color: var(--ink);
+    font-size:14px; font-family:'IBM Plex Mono', monospace; padding:10px 0;
+  }
+  .export-filename-ext{ color:#8a887c; font-size:13px; padding-right:8px; flex-shrink:0; }
+  .export-dialog-actions{ display:flex; gap:10px; }
+  .export-dialog-actions button{ flex:1; }
+
   /* ---------- data sheet ---------- */
   .sheet-overlay{
     position:fixed; inset:0; background: rgba(0,0,0,0.5);
@@ -637,20 +652,57 @@
     if(el) el.remove();
   }
 
-  function exportData(){
+  function defaultExportFilename(){
+    var now = new Date();
+    var localDate = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    return 'checklists-' + localDate;
+  }
+
+  function sanitizeFilename(name){
+    var cleaned = String(name || '').trim().replace(/[\\/:*?"<>|.]/g, ' ').replace(/\s+/g, ' ').trim();
+    return cleaned || defaultExportFilename();
+  }
+
+  function performExport(filename){
     var payload = { app:'checklist-app', version:1, exportedAt: new Date().toISOString(), checklists: state.checklists };
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    var now = new Date();
-    var localDate = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    a.download = 'checklists-' + localDate + '.json';
+    a.download = sanitizeFilename(filename) + '.json';
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
     showToast('書き出しました');
+  }
+
+  function openExportDialog(){
+    var wrap = document.createElement('div');
+    wrap.className = 'stamp-overlay';
+    wrap.id = 'export-dialog';
+    wrap.setAttribute('data-action', 'close-export-dialog');
+    var defaultName = defaultExportFilename();
+    wrap.innerHTML = ''+
+      '<div class="stamp-card export-dialog-card" data-stop="1">'+
+        '<h3>書き出すファイル名を確認</h3>'+
+        '<p class="mono">ダウンロード前に修正できます</p>'+
+        '<div class="export-filename-row">'+
+          '<input type="text" id="export-filename-input" class="export-filename-input" value="'+esc(defaultName)+'">'+
+          '<span class="export-filename-ext mono">.json</span>'+
+        '</div>'+
+        '<div class="export-dialog-actions">'+
+          '<button class="btn-secondary" data-action="close-export-dialog">キャンセル</button>'+
+          '<button class="primary-btn" data-action="confirm-export">ダウンロード</button>'+
+        '</div>'+
+      '</div>';
+    document.getElementById('app').appendChild(wrap);
+    var input = document.getElementById('export-filename-input');
+    if(input){ input.focus(); input.select(); }
+  }
+  function closeExportDialog(){
+    var el = document.getElementById('export-dialog');
+    if(el) el.remove();
   }
 
   function importFromText(rawText){
@@ -729,7 +781,16 @@
     if(action === 'seed-sample'){ seedSample(); return; }
     if(action === 'open-data'){ openDataSheet(); return; }
     if(action === 'close-sheet' && e.target === target){ closeDataSheet(); return; }
-    if(action === 'export-data'){ exportData(); return; }
+    if(action === 'export-data'){ openExportDialog(); return; }
+    if(action === 'close-export-dialog' && e.target === target){ closeExportDialog(); return; }
+    if(action === 'confirm-export'){
+      var filenameInput = document.getElementById('export-filename-input');
+      var filename = filenameInput ? filenameInput.value : '';
+      performExport(filename);
+      closeExportDialog();
+      closeDataSheet();
+      return;
+    }
     if(action === 'import-data'){ document.getElementById('import-file').click(); return; }
     if(action === 'import-paste'){
       var pasteEl = document.getElementById('paste-import-text');
