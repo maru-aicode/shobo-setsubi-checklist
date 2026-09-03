@@ -213,7 +213,7 @@
     border:none; border-radius:9px; padding: 12px 13px;
     font-size:15px; outline:none;
   }
-  .field-textarea{ min-height:64px; resize:vertical; font-family:inherit; }
+  .field-textarea{ min-height:64px; resize:none; overflow:hidden; font-family:inherit; }
   .field-input:focus, .field-textarea:focus{ box-shadow: 0 0 0 2px var(--caution); }
   .field-error{ color:#e8a3a3; font-size:12px; margin-top:6px; }
 
@@ -706,6 +706,10 @@
     }
     var name = document.getElementById('wf-name');
     var desc = document.getElementById('wf-desc');
+    if(desc){
+      autoResizeItemTextarea(desc);
+      desc.addEventListener('input', function(){ autoResizeItemTextarea(desc); });
+    }
     document.querySelectorAll('[data-item-input]').forEach(function(inp){
       autoResizeItemTextarea(inp);
       inp.addEventListener('input', function(){ autoResizeItemTextarea(inp); });
